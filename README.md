@@ -23,7 +23,7 @@ Toda a documentação detalhada está na Wiki do projeto:
 6. **Confirmar envio** → status muda pra **EM_ANALISE**.  
 7. olha as **Notificações**, tem a mensagem do envio.  
 
-### Cenário 2 — Admin 🛠
+### Cenário 2 — Admin 
 1. papel = **Admin** → faz login.  
 2. entra em **Pendentes** → clica em **Analisar**.  
 3. (pode abrir **Verificar docs** se quiser).  
