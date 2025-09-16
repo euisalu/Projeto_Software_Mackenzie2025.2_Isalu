@@ -14,44 +14,12 @@ Toda a documentação detalhada está na Wiki do projeto:
 
 
 
-> As imagens de protótipos e arquivos de modelagem serão adicionados conforme evolução.
+.
 
----
 
-## Como rodar (Java 8 + Maven)
 
-Pré-requisitos:
-- Java 8 instalado
-- Maven instalado
 
-Passos:
 
-```bash
-# clonar repositório
-git clone https://github.com/euisalu/Projeto_Software_Mackenzie2025.2_Isalu.git
-cd Projeto_Software_Mackenzie2025.2_Isalu
-
-# compilar e rodar testes
-mvn clean test
-
-# executar aplicação (se houver módulo web/cli)
-mvn spring-boot:run
-
-Checklist da Entrega
-
- Wiki com Cenário 1 (Solicita Afiliação)
-
- Wiki com Cenário 2 (Aprova Afiliação)
-
- Protótipos exportados em docs/prototipos/
-
- Arquivos de classes candidatas em docs/modelagem/
-
- README.md atualizado com instruções de execução
-
-Observação
-
-Projeto individual por Isadora Luisa Candini Marques (RA: 10730955) para a disciplina de Engenharia de Software – Mackenzie 2025.2.
 
 
 
