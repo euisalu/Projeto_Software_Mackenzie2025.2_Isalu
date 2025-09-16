@@ -15,6 +15,9 @@ Toda a documentação detalhada está na Wiki do projeto:
 
 
 .
+Fluxos cobertos:
+- Voluntário: Home → Auth → Perfil → Dashboard → Lista Org → Detalhe → Form → Upload → Revisão → Confirmação → Status/Notificações
+- Admin: Login → Pendentes → Detalhe → Verificação → Decisão → Confirmação → Auditoria
 
 
 
