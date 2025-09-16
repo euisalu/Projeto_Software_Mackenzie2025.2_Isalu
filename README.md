@@ -31,7 +31,11 @@ Toda a documentação detalhada está na Wiki do projeto:
 5. voluntário recebe notificação.  
 6. em **Auditoria** dá pra ver todo histórico de ações.  
 
+Fluxo de Telas
 
+Voluntário: Home → Auth → Perfil → Dashboard → Lista Org → Detalhe Org → Form Solicitação → Upload Docs → Revisão → Confirmação → Status/Notificações
+
+Admin: Login → Pendentes → Detalhe → Verificação Docs → Decisão → Confirmação → Auditoria
 
 
 
