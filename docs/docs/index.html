@@ -462,4 +462,161 @@
           </div>
           <div className="mt-4 flex gap-2">
             <Button onClick={()=> setScreenAdmin("Decisao")}>Aprovar/Rejeitar</Button>
-            <Button variant="ghost" onClick={()=> { setSol({...sol, sta
+            <Button variant="ghost" onClick={()=> { setSol({...sol, status: "COMPLEMENTO_SOLICITADO"}); addNotif("Precisamos de complemento de documentação."); log("Admin solicitou complemento"); }}>Solicitar complemento</Button>
+            <Button variant="ghost" onClick={()=> setScreenAdmin("Pendentes")}>Voltar</Button>
+          </div>
+        </Card>
+      );
+
+      const TelaVerificacaoDocs = () => (
+        <Card>
+          <H1>Verificação de Documentos</H1>
+          <p className="mt-2 text-gray-600">Pré-visualização e checagem (mock).</p>
+          <ul className="mt-3 text-sm list-disc pl-5">
+            {sol.documentos.map((d,i)=>(<li key={i}>{d.tipo} – {d.nome} <span className="text-gray-500">(ok)</span></li>))}
+          </ul>
+          <div className="mt-4 flex gap-2">
+            <Button variant="success" onClick={()=> { log("Admin marcou docs como verificados"); setScreenAdmin("DetalheSolicitacao"); }}>Marcar verificado</Button>
+            <Button variant="danger" onClick={()=> { addNotif("Documento reprovado: reenviar RG/CPF."); log("Admin reprovou documento"); setSol({...sol, status: "COMPLEMENTO_SOLICITADO"}); }}>Solicitar novo upload</Button>
+            <Button variant="ghost" onClick={()=> setScreenAdmin("DetalheSolicitacao")}>Voltar</Button>
+          </div>
+        </Card>
+      );
+
+      const TelaDecisao = () => {
+        const [acao, setAcao] = useState("APROVAR");
+        const [papelAtrib, setPapelAtrib] = useState("Voluntário");
+        const [unidade, setUnidade] = useState(sol.unidade || "Centro");
+        const [motivo, setMotivo] = useState("");
+
+        function confirmar(){
+          if (acao === "APROVAR") {
+            setSol({...sol, status:"APROVADA"}); addNotif("Sua solicitação foi aprovada. Bem-vindo!"); log("Admin aprovou solicitação");
+          } else {
+            setSol({...sol, status:"REJEITADA"}); addNotif("Sua solicitação foi rejeitada." + (motivo? ` Motivo: ${motivo}` : "")); log("Admin rejeitou solicitação");
+          }
+          setScreenAdmin("ConfirmacaoAdmin");
+        }
+
+        return (
+          <Card>
+            <H1>Decisão</H1>
+            <div className="mt-3 grid sm:grid-cols-3 gap-3">
+              <div><Label>Ação</Label>
+                <Select value={acao} onChange={(e)=> setAcao(e.target.value)}>
+                  <option value="APROVAR">Aprovar</option>
+                  <option value="REJEITAR">Rejeitar</option>
+                </Select>
+              </div>
+              {acao==="APROVAR" ? (
+                <>
+                  <div><Label>Papel</Label>
+                    <Select value={papelAtrib} onChange={(e)=> setPapelAtrib(e.target.value)}>
+                      <option>Voluntário</option><option>Líder</option>
+                    </Select>
+                  </div>
+                  <div><Label>Unidade</Label>
+                    <Select value={unidade} onChange={(e)=> setUnidade(e.target.value)}>
+                      <option>Centro</option><option>Zona Sul</option><option>On-line</option>
+                    </Select>
+                  </div>
+                </>
+              ) : (
+                <div className="sm:col-span-3">
+                  <Label>Motivo</Label>
+                  <Textarea rows={3} value={motivo} onChange={(e)=> setMotivo(e.target.value)} placeholder="Explique brevemente o motivo" />
+                </div>
+              )}
+            </div>
+            <div className="mt-4 flex gap-2">
+              <Button onClick={confirmar}>Confirmar</Button>
+              <Button variant="ghost" onClick={()=> setScreenAdmin("DetalheSolicitacao")}>Cancelar</Button>
+            </div>
+          </Card>
+        );
+      };
+
+      const TelaConfirmacaoAdmin = () => (
+        <Card>
+          <H1>Decisão registrada</H1>
+          <p className="mt-2 text-gray-600">O candidato foi notificado automaticamente.</p>
+          <div className="mt-4 flex gap-2">
+            <Button onClick={()=> setScreenAdmin("Pendentes")}>Voltar ao painel</Button>
+            <Button variant="ghost" onClick={()=> setScreenAdmin("Auditoria")}>Ver auditoria</Button>
+          </div>
+        </Card>
+      );
+
+      const TelaAuditoria = () => (
+        <Card>
+          <H1>Auditoria</H1>
+          <ul className="mt-3 text-sm space-y-2">
+            {auditoria.length===0 ? (
+              <li className="text-gray-600">Sem eventos registrados ainda.</li>
+            ) : auditoria.map((a)=> (
+              <li key={a.id} className="border rounded-xl px-3 py-2">
+                <div className="font-medium">{a.evento}</div>
+                <div className="text-gray-500">{a.quando}</div>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      );
+
+      /* ===== Render ===== */
+      return (
+        <div className="min-h-dvh bg-gradient-to-b from-gray-50 to-white text-gray-900">
+          <Topbar />
+          <main className="max-w-5xl mx-auto px-4 py-6 space-y-4">
+            <Card className="bg-gray-50">
+              <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600">
+                {papel === "VOLUNTARIO" ? (
+                  <>
+                    <span className="font-medium">Fluxo Voluntário:</span>
+                    <span>Home → Auth → Perfil → Dashboard → Lista Org → Detalhe → Form → Upload → Revisão → Confirmação → Status/Notificações</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="font-medium">Fluxo Admin:</span>
+                    <span>Login → Pendentes → Detalhe → Verificação → Decisão → Confirmação → Auditoria</span>
+                  </>
+                )}
+              </div>
+            </Card>
+
+            {papel === "VOLUNTARIO" && ({
+              Home: <TelaHome />,
+              Auth: <TelaAuth />,
+              Perfil: <TelaPerfil />,
+              Dashboard: <TelaDashboard />,
+              ListaOrg: <TelaListaOrg />,
+              DetalheOrg: <TelaDetalheOrg />,
+              FormSolicitacao: <TelaFormSolicitacao />,
+              UploadDocs: <TelaUploadDocs />,
+              Revisao: <TelaRevisao />,
+              Confirmacao: <TelaConfirmacao />,
+              Status: <TelaStatus />,
+              Notificacoes: <TelaNotificacoes />,
+            }[screenVol])}
+
+            {papel === "ADMIN" && ({
+              LoginAdmin: <TelaLoginAdmin />,
+              Pendentes: <TelaPendentes />,
+              DetalheSolicitacao: <TelaDetalheSolicitacao />,
+              VerificacaoDocs: <TelaVerificacaoDocs />,
+              Decisao: <TelaDecisao />,
+              ConfirmacaoAdmin: <TelaConfirmacaoAdmin />,
+              Auditoria: <TelaAuditoria />,
+            }[screenAdmin])}
+          </main>
+          <footer className="max-w-5xl mx-auto px-4 pb-10 text-xs text-gray-500">
+            Protótipo didático sem persistência. Telas e ações representam os requisitos essenciais da atividade.
+          </footer>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
