@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Protótipo – Afiliação (Voluntário / Admin)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://unpkg.com" />
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="bg-gray-50">
+  <div id="root"></div>
+
+  <!-- CÓDIGO DAS TELAS -->
+  <script type="text/babel">
+    const { useState } = React;
+
+    /* ========= componentes básicos ========= */
+    const Card = ({ children, className = "" }) => (
+      <div className={`rounded-2xl shadow-md border border-gray-200 p-5 bg-white ${className}`}>{children}</div>
+    );
+    const H1 = ({ children }) => <h1 className="text-2xl font-semibold tracking-tight">{children}</h1>;
+    const H2 = ({ children }) => <h2 className="text-xl font-semibold tracking-tight">{children}</h2>;
+    const Label = ({ children }) => <label className="text-sm font-medium text-gray-700">{children}</label>;
+    const Input = (props) => (
+      <input {...props} className={`w-full rounded-xl border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black/20 ${props.className||""}`} />
+    );
+    const Textarea = (props) => (
+      <textarea {...props} className={`w-full rounded-xl border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black/20 ${props.className||""}`} />
+    );
+    const Select = (props) => (
+      <select {...props} className={`w-full rounded-xl border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black/20 ${props.className||""}`} />
+    );
+    const Button = ({ children, variant = "primary", ...rest }) => {
+      const base = "rounded-xl px-4 py-2 font-medium transition active:scale-[0.99]";
+      const styles = {
+        primary: "bg-black text-white hover:opacity-90",
+        ghost: "bg-transparent border border-gray-300 hover:bg-gray-50",
+        subtle: "bg-gray-100 text-gray-800 hover:bg-gray-200",
+        danger: "bg-red-600 text-white hover:bg-red-700",
+        success: "bg-emerald-600 text-white hover:bg-emerald-700",
+      };
+      return (<button className={`${base} ${styles[variant]}`} {...rest}>{children}</button>);
+    };
+
+    /* ========= estado e mocks ========= */
+    const STATUS = ["CRIADA","EM_ANALISE","COMPLEMENTO_SOLICITADO","APROVADA","REJEITADA","ATIVA"];
+    const solicitacaoVazia = { id:"S-001", org:"", unidade:"", areaDesejada:"", disponibilidade:"", carta:"", documentos:[], status:"CRIADA" };
+
+    function App(){
+      const [papel, setPapel] = useState("VOLUNTARIO"); // VOLUNTARIO | ADMIN
+      const [screenVol, setScreenVol] = useState("Home");
+      const [screenAdmin, setScreenAdmin] = useState("LoginAdmin");
+
+      const [perfil, setPerfil] = useState({
+        nome:"", cpf:"", nasc:"", tel:"", cep:"", logradouro:"", numero:"", cidade:"", uf:"SP",
+        interesses:"", disponibilidade:"", linkedin:"", termos:false,
+      });
+      const [sol, setSol] = useState({ ...solicitacaoVazia });
+      const [notifs, setNotifs] = useState([]);
+      const [filtroStatus, setFiltroStatus] = useState("TODOS");
+      const [auditoria, setAuditoria] = useState([]);
+
+      function addNotif(msg){
+        const id = (crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now());
+        setNotifs(n => [{ id, msg, data:new Date().toLocaleString() }, ...n]);
+      }
+      function log(evento){
+        const id = (crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now());
+        setAuditoria(a => [{ id, evento, quando:new Date().toLocaleString() }, ...a]);
+      }
+
+      const Topbar = () => (
+        <div className="sticky top-0 z-10 backdrop-blur bg-white/60 border-b border-gray-200">
+          <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-2.5 h-2.5 rounded-full bg-black" />
+              <span className="font-semibold">Afiliação · Protótipo</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Label>Papel</Label>
+              <Select value={papel} onChange={(e)=> setPapel(e.target.value)}>
+                <option value="VOLUNTARIO">Voluntário</option>
+                <option value="ADMIN">Admin</option>
+              </Select>
+              {papel === "VOLUNTARIO" ? (
+                <div className="hidden sm:flex gap-2">
+                  <Button variant="ghost" onClick={()=> setScreenVol("Home")}>Home</Button>
+                  <Button variant="ghost" onClick={()=> setScreenVol("Dashboard")}>Dashboard</Button>
+                  <Button variant="ghost" onClick={()=> setScreenVol("Status")}>Status</Button>
+                  <Button variant="ghost" onClick={()=> setScreenVol("Notificacoes")}>Notificações</Button>
+                </div>
+              ) : (
+                <div className="hidden sm:flex gap-2">
+                  <Button variant="ghost" onClick={()=> setScreenAdmin("Pendentes")}>Pendentes</Button>
+                  <Button variant="ghost" onClick={()=> setScreenAdmin("Auditoria")}>Auditoria</Button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+
+      /* ===== Telas Voluntário (Home → Auth → Perfil → Dashboard → ListaOrg → DetalheOrg → FormSolicitacao → UploadDocs → Revisao → Confirmacao → Status/Notificacoes) ===== */
+      const TelaHome = () => (
+        <Card>
+          <H1>Programa de Voluntariado</H1>
+          <p className="mt-2 text-gray-600">Seja parte de causas reais. Solicite sua afiliação e acompanhe tudo por aqui.</p>
+          <div className="mt-5 flex gap-3">
+            <Button onClick={()=> setScreenVol("Auth")}>Criar conta</Button>
+            <Button variant="ghost" onClick={()=> setScreenVol("Auth")}>Entrar</Button>
+          </div>
+        </Card>
+      );
+
+      const TelaAuth = () => (
+        <Card>
+          <H1>Entrar / Criar conta</H1>
+          <div className="grid sm:grid-cols-2 gap-4 mt-4">
+            <div><Label>Email*</Label><Input placeholder="voce@email.com" /></div>
+            <div><Label>Senha*</Label><Input type="password" placeholder="••••••••" /></div>
+          </div>
+          <div className="mt-4 flex gap-3">
+            <Button onClick={()=> setScreenVol("Perfil")}>Continuar</Button>
+            <Button variant="ghost" onClick={()=> setScreenVol("Home")}>Voltar</Button>
+          </div>
+        </Card>
+      );
+
+      const TelaPerfil = () => (
+        <Card>
+          <H1>Cadastro de Perfil</H1>
+          <div className="grid sm:grid-cols-3 gap-4 mt-4">
+            <div className="sm:col-span-2"><Label>Nome completo*</Label>
+              <Input value={perfil.nome} onChange={(e)=>setPerfil({...perfil, nome:e.target.value})} placeholder="Seu nome" />
+            </div>
+            <div><Label>CPF*</Label>
+              <Input value={perfil.cpf} onChange={(e)=>setPerfil({...perfil, cpf:e.target.value})} placeholder="000.000.000-00" />
+            </div>
+            <div><Label>Data de nascimento*</Label>
+              <Input type="date" value={perfil.nasc} onChange={(e)=>setPerfil({...perfil, nasc:e.target.value})} />
+            </div>
+            <div><Label>Telefone*</Label>
+              <Input value={perfil.tel} onChange={(e)=>setPerfil({...perfil, tel:e.target.value})} placeholder="(11) 90000-0000" />
+            </div>
+            <div><Label>CEP*</Label>
+              <Input value={perfil.cep} onChange={(e)=>setPerfil({...perfil, cep:e.target.value})} placeholder="00000-000" />
+            </div>
+            <div className="sm:col-span-2"><Label>Logradouro*</Label>
+              <Input value={perfil.logradouro} onChange={(e)=>setPerfil({...perfil, logradouro:e.target.value})} placeholder="Rua X" />
+            </div>
+            <div><Label>Número*</Label>
+              <Input value={perfil.numero} onChange={(e)=>setPerfil({...perfil, numero:e.target.value})} placeholder="123" />
+            </div>
+            <div><Label>Cidade*</Label>
+              <Input value={perfil.cidade} onChange={(e)=>setPerfil({...perfil, cidade:e.target.value})} placeholder="São Paulo" />
+            </div>
+            <div><Label>UF*</Label>
+              <Select value={perfil.uf} onChange={(e)=>setPerfil({...perfil, uf:e.target.value})}>
+                {"AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO".split(" ").map(uf=> <option key={uf} value={uf}>{uf}</option>)}
+              </Select>
+            </div>
+            <div className="sm:col-span-2"><Label>Áreas de interesse</Label>
+              <Input value={perfil.interesses} onChange={(e)=>setPerfil({...perfil, interesses:e.target.value})} placeholder="Educação, Saúde, Tecnologia..." />
+            </div>
+            <div><Label>Disponibilidade</Label>
+              <Input value={perfil.disponibilidade} onChange={(e)=>setPerfil({...perfil, disponibilidade:e.target.value})} placeholder="Noites, fins de semana" />
+            </div>
+            <div className="sm:col-span-3"><Label>LinkedIn/Portfólio</Label>
+              <Input value={perfil.linkedin} onChange={(e)=>setPerfil({...perfil, linkedin:e.target.value})} placeholder="https://linkedin.com/in/seuuser" />
+            </div>
+          </div>
+          <div className="mt-4 flex items-center gap-2">
+            <input id="termos" type="checkbox" checked={perfil.termos} onChange={(e)=>setPerfil({...perfil, termos:e.target.checked})} />
+            <Label>Li e aceito os termos*</Label>
+          </div>
+          <div className="mt-4 flex gap-3">
+            <Button onClick={()=> setScreenVol("Dashboard")}>Salvar e continuar</Button>
+            <Button variant="ghost" onClick={()=> setScreenVol("Home")}>Cancelar</Button>
+          </div>
+        </Card>
+      );
+
+      const TelaDashboard = () => (
+        <div className="grid md:grid-cols-3 gap-4">
+          <Card className="md:col-span-2">
+            <H2>Minhas solicitações</H2>
+            {sol.status === "CRIADA" && (<p className="mt-2 text-gray-600">Você ainda não enviou nenhuma solicitação.</p>)}
+            <div className="mt-4 flex gap-3">
+              <Button onClick={()=> setScreenVol("ListaOrg")}>Buscar organizações</Button>
+              {sol.org && <Button variant="subtle" onClick={()=> setScreenVol("Status")}>Ver status</Button>}
+            </div>
+          </Card>
+          <Card>
+            <H2>Organizações em destaque</H2>
+            <ul className="mt-2 list-disc pl-5 text-sm text-gray-700 space-y-1">
+              <li>Instituto Aurora – Educação</li>
+              <li>Casa Verde – Meio Ambiente</li>
+              <li>Saúde Viva – Saúde</li>
+            </ul>
+          </Card>
+        </div>
+      );
+
+      const TelaListaOrg = () => (
+        <Card>
+          <H1>Organizações</H1>
+          <div className="grid sm:grid-cols-4 gap-3 mt-4">
+            <div className="sm:col-span-2"><Input placeholder="Buscar por nome, causa..." /></div>
+            <Select defaultValue="SP"><option>SP</option><option>RJ</option><option>PE</option></Select>
+            <Select defaultValue="Todas"><option>Todas</option><option>Educação</option><option>Saúde</option><option>Meio Ambiente</option></Select>
+          </div>
+          <div className="grid md:grid-cols-3 gap-4 mt-5">
+            {["Instituto Aurora","Casa Verde","Saúde Viva"].map((o)=> (
+              <Card key={o}>
+                <H2>{o}</H2>
+                <p className="text-sm text-gray-600 mt-1">Cidade: São Paulo · Formato: Presencial/Remoto</p>
+                <div className="mt-3"><Button onClick={()=> { setSol({...sol, org:o}); setScreenVol("DetalheOrg"); }}>Ver detalhes</Button></div>
+              </Card>
+            ))}
+          </div>
+          <div className="mt-4"><Button variant="ghost" onClick={()=> setScreenVol("Dashboard")}>Voltar</Button></div>
+        </Card>
+      );
+
+      const TelaDetalheOrg = () => (
+        <Card>
+          <H1>{sol.org || "Organização"}</H1>
+          <p className="mt-2 text-gray-600">Descrição, requisitos e documentos exigidos (RG/CPF, comprovante de residência).</p>
+          <div className="grid sm:grid-cols-3 gap-3 mt-4">
+            <div><Label>Unidade</Label>
+              <Select value={sol.unidade} onChange={(e)=> setSol({...sol, unidade:e.target.value})}>
+                <option value="">Selecione</option><option value="Centro">Centro</option><option value="Zona Sul">Zona Sul</option><option value="On-line">On-line</option>
+              </Select>
+            </div>
+            <div><Label>Área de atuação desejada</Label>
+              <Select value={sol.areaDesejada} onChange={(e)=> setSol({...sol, areaDesejada:e.target.value})}>
+                <option value="">Selecione</option><option value="Educação">Educação</option><option value="Saúde">Saúde</option><option value="Ambiental">Ambiental</option>
+              </Select>
+            </div>
+            <div><Label>Disponibilidade</Label>
+              <Select value={sol.disponibilidade} onChange={(e)=> setSol({...sol, disponibilidade:e.target.value})}>
+                <option value="">Selecione</option><option value="Dias úteis">Dias úteis</option><option value="Fins de semana">Fins de semana</option><option value="Noites">Noites</option>
+              </Select>
+            </div>
+          </div>
+          <div className="mt-4 flex gap-3">
+            <Button onClick={()=> setScreenVol("FormSolicitacao")}>Solicitar afiliação</Button>
+            <Button variant="ghost" onClick={()=> setScreenVol("ListaOrg")}>Voltar</Button>
+          </div>
+        </Card>
+      );
+
+      const TelaFormSolicitacao = () => (
+        <Card>
+          <H1>Solicitação de Afiliação</H1>
+          <div className="mt-4"><Label>Carta de motivação*</Label>
+            <Textarea rows={5} value={sol.carta} onChange={(e)=> setSol({...sol, carta:e.target.value})} placeholder="Por que você quer se afiliar?" />
+          </div>
+          <div className="mt-4 flex gap-3">
+            <Button onClick={()=> setScreenVol("UploadDocs")}>Continuar</Button>
+            <Button variant="ghost" onClick={()=> setScreenVol("DetalheOrg")}>Voltar</Button>
+          </div>
+        </Card>
+      );
+
+      const TelaUploadDocs = () => (
+        <Card>
+          <H1>Upload de Documentos</H1>
+          <p className="mt-2 text-gray-600">Anexe RG/CPF e Comprovante de residência (PDF/JPG/PNG, até 5MB).</p>
+          <div className="mt-4 grid sm:grid-cols-2 gap-3">
+            <div className="flex items-center justify-between border rounded-xl px-3 py-2">
+              <span>RG/CPF*</span>
+              <Button variant="subtle" onClick={()=> setSol({...sol, documentos:[...sol.documentos, {tipo:"RG/CPF", nome:"rgcpf.pdf"}]})}>Enviar</Button>
+            </div>
+            <div className="flex items-center justify-between border rounded-xl px-3 py-2">
+              <span>Comprovante de residência*</span>
+              <Button variant="subtle" onClick={()=> setSol({...sol, documentos:[...sol.documentos, {tipo:"Comprovante", nome:"conta-luz.jpg"}]})}>Enviar</Button>
+            </div>
+          </div>
+          <ul className="mt-4 text-sm text-gray-700 list-disc pl-5">
+            {sol.documentos.map((d,i)=>(<li key={i}>{d.tipo} — {d.nome}</li>))}
+          </ul>
+          <div className="mt-4 flex gap-3">
+            <Button onClick={()=> setScreenVol("Revisao")}>Prosseguir</Button>
+            <Button variant="ghost" onClick={()=> setScreenVol("FormSolicitacao")}>Voltar</Button>
+          </div>
+        </Card>
+      );
+
+      const TelaRevisao = () => (
+        <Card>
+          <H1>Revisão</H1>
+          <div className="mt-3 grid sm:grid-cols-2 gap-4 text-sm">
+            <Card className="bg-gray-50"><H2>Dados</H2>
+              <ul className="mt-2 space-y-1">
+                <li><b>Org:</b> {sol.org}</li>
+                <li><b>Unidade:</b> {sol.unidade||"—"}</li>
+                <li><b>Área:</b> {sol.areaDesejada||"—"}</li>
+                <li><b>Disponibilidade:</b> {sol.disponibilidade||"—"}</li>
+              </ul>
+            </Card>
+            <Card className="bg-gray-50"><H2>Documentos</H2>
+              <ul className="mt-2 space-y-1">
+                {sol.documentos.length===0 ? <li>Sem anexos</li> : sol.documentos.map((d,i)=>(<li key={i}>{d.tipo} – {d.nome}</li>))}
+              </ul>
+            </Card>
+          </div>
+          <div className="mt-4"><Label>Carta de motivação</Label>
+            <Card className="mt-1 bg-gray-50 text-sm">{sol.carta||"—"}</Card>
+          </div>
+          <div className="mt-4 flex gap-3">
+            <Button onClick={()=> { setSol({...sol, status:"EM_ANALISE"}); addNotif("Sua solicitação foi enviada e está em análise."); log("Voluntário enviou solicitação"); setScreenVol("Confirmacao"); }}>Confirmar envio</Button>
+            <Button variant="ghost" onClick={()=> setScreenVol("UploadDocs")}>Voltar</Button>
+          </div>
+        </Card>
+      );
+
+      const TelaConfirmacao = () => (
+        <Card>
+          <H1>Solicitação enviada</H1>
+          <p className="mt-2 text-gray-600">Recebemos sua solicitação. Você pode acompanhar o status e enviar complementos se necessário.</p>
+          <div className="mt-4 flex gap-3">
+            <Button onClick={()=> setScreenVol("Status")}>Ir para Status</Button>
+            <Button variant="ghost" onClick={()=> setScreenVol("Dashboard")}>Voltar ao Dashboard</Button>
+          </div>
+        </Card>
+      );
+
+      const LinhaTempo = ({ status }) => {
+        const steps = ["CRIADA","EM_ANALISE","COMPLEMENTO_SOLICITADO","APROVADA","REJEITADA","ATIVA"];
+        return (
+          <div className="flex flex-wrap gap-2 mt-3">
+            {steps.map(s=> (
+              <div key={s} className={`px-3 py-1 rounded-full border text-sm ${s===status?"bg-black text-white border-black":"bg-white text-gray-700"}`}>{s}</div>
+            ))}
+          </div>
+        );
+      };
+
+      const TelaStatus = () => (
+        <Card>
+          <H1>Status da Solicitação</H1>
+          {sol.org ? (
+            <>
+              <p className="mt-1 text-gray-600">ID {sol.id} · {sol.org}</p>
+              <LinhaTempo status={sol.status} />
+              <div className="mt-4 flex gap-3">
+                {sol.status === "EM_ANALISE" && (
+                  <Button variant="ghost" onClick={()=> { setSol({...sol, status: "CRIADA"}); addNotif("Você cancelou a solicitação."); log("Voluntário cancelou a solicitação"); }}>Cancelar solicitação</Button>
+                )}
+                {sol.status === "COMPLEMENTO_SOLICITADO" && (
+                  <Button onClick={()=> setScreenVol("UploadDocs")}>Enviar complemento</Button>
+                )}
+              </div>
+            </>
+          ) : (<p className="mt-2 text-gray-600">Nenhuma solicitação criada.</p>)}
+        </Card>
+      );
+
+      const TelaNotificacoes = () => (
+        <Card>
+          <H1>Notificações</H1>
+          <ul className="mt-3 space-y-2">
+            {notifs.length===0 ? (
+              <li className="text-gray-600">Sem mensagens ainda.</li>
+            ) : notifs.map((n)=> (
+              <li key={n.id} className="border rounded-xl px-3 py-2 text-sm">
+                <div className="font-medium">{n.msg}</div>
+                <div className="text-gray-500">{n.data}</div>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      );
+
+      /* ===== Telas Admin (Login → Pendentes → DetalheSolicitacao → VerificacaoDocs → Decisao → ConfirmacaoAdmin → Auditoria) ===== */
+      const TelaLoginAdmin = () => (
+        <Card>
+          <H1>Admin · Login</H1>
+          <div className="grid sm:grid-cols-2 gap-4 mt-4">
+            <div><Label>E-mail*</Label><Input placeholder="admin@org.org" /></div>
+            <div><Label>Senha*</Label><Input type="password" placeholder="••••••••" /></div>
+          </div>
+          <div className="mt-4 flex gap-3">
+            <Button onClick={()=> setScreenAdmin("Pendentes")}>Entrar</Button>
+            <Button variant="ghost" onClick={()=> setPapel("VOLUNTARIO")}>Ir para Voluntário</Button>
+          </div>
+        </Card>
+      );
+
+      const TelaPendentes = () => (
+        <Card>
+          <H1>Afiliações</H1>
+          <div className="mt-3 grid sm:grid-cols-3 gap-3">
+            <div><Label>Status</Label>
+              <Select value={filtroStatus} onChange={(e)=> setFiltroStatus(e.target.value)}>
+                <option value="TODOS">Todos</option>
+                {STATUS.map(s=> <option key={s} value={s}>{s}</option>)}
+              </Select>
+            </div>
+            <div><Label>Organização</Label>
+              <Select defaultValue="Todas"><option>Todas</option><option>Instituto Aurora</option><option>Casa Verde</option></Select>
+            </div>
+            <div><Label>Unidade</Label>
+              <Select defaultValue="Todas"><option>Todas</option><option>Centro</option><option>Zona Sul</option><option>On-line</option></Select>
+            </div>
+          </div>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead><tr className="text-left text-gray-600">
+                <th className="py-2">Candidato</th><th>Org</th><th>Unidade</th><th>Data</th><th>Status</th><th></th>
+              </tr></thead>
+              <tbody>
+                <tr className="border-t">
+                  <td className="py-2">{perfil.nome || "Candidato 1"}</td>
+                  <td>{sol.org || "—"}</td>
+                  <td>{sol.unidade || "—"}</td>
+                  <td>{new Date().toLocaleDateString()}</td>
+                  <td>{sol.status}</td>
+                  <td><Button variant="subtle" onClick={()=> setScreenAdmin("DetalheSolicitacao")}>Analisar</Button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      );
+
+      const TelaDetalheSolicitacao = () => (
+        <Card>
+          <H1>Detalhe da Solicitação</H1>
+          <div className="grid lg:grid-cols-3 gap-4 mt-3">
+            <Card className="bg-gray-50 lg:col-span-2">
+              <H2>Dados do Voluntário</H2>
+              <ul className="mt-2 text-sm space-y-1">
+                <li><b>Nome:</b> {perfil.nome || "Candidato 1"}</li>
+                <li><b>CPF:</b> {perfil.cpf || "000.000.000-00"}</li>
+                <li><b>Contato:</b> {perfil.tel || "(00) 00000-0000"}</li>
+                <li><b>Endereço:</b> {perfil.logradouro || "Rua X"}, {perfil.numero || "0"} — {perfil.cidade || "Cidade"}/{perfil.uf}</li>
+              </ul>
+              <div className="mt-3">
+                <H2>Formulário</H2>
+                <ul className="mt-2 text-sm space-y-1">
+                  <li><b>Org:</b> {sol.org}</li>
+                  <li><b>Unidade:</b> {sol.unidade || "—"}</li>
+                  <li><b>Área desejada:</b> {sol.areaDesejada || "—"}</li>
+                  <li><b>Disponibilidade:</b> {sol.disponibilidade || "—"}</li>
+                </ul>
+              </div>
+            </Card>
+            <Card className="bg-gray-50">
+              <H2>Documentos</H2>
+              <ul className="mt-2 text-sm space-y-1">
+                {sol.documentos.length===0 ? <li>Sem anexos</li> : sol.documentos.map((d,i)=>(<li key={i}>{d.tipo} – {d.nome}</li>))}
+              </ul>
+              <div className="mt-3 flex gap-2">
+                <Button variant="subtle" onClick={()=> setScreenAdmin("VerificacaoDocs")}>Verificar</Button>
+              </div>
+            </Card>
+          </div>
+          <div className="mt-4 flex gap-2">
+            <Button onClick={()=> setScreenAdmin("Decisao")}>Aprovar/Rejeitar</Button>
+            <Button variant="ghost" onClick={()=> { setSol({...sol, sta
