@@ -2,7 +2,7 @@
 *Isadora Luisa Candini Marques*  
 RA: **10730955**
 
-Este repositório concentra a implementação e a documentação dos dois cenários definidos na Especificação da disciplina:
+Este repositório tm a implementação e a documentação dos dois cenários definidos na Especificação da disciplina:
 - UC002 — Solicita Afiliação (Visão Voluntário)
 - UC003 — Aprova Afiliação (Visão Rede Mais Social/Admin)
 
