@@ -1,0 +1,1 @@
+# Projeto_Software_Mackenzie2025.2_Isalu
